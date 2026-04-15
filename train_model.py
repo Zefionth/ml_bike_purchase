@@ -10,11 +10,14 @@ import mlflow
 import mlflow.sklearn
 import joblib
 import warnings
+import shutil
+import os
 warnings.filterwarnings('ignore')
 
-# Константы (потом Jenkins их подставит)
+# Константы
 EXPERIMENT_NAME = "bike_purchase_prediction"
 MODEL_PATH = "./models/bike_purchase_model.pkl"
+MLFLOW_MODEL_PATH = "./models/mlflow_model"
 RESULTS_PATH = "./training_results.txt"
 
 def prepare_features(df):
@@ -118,13 +121,12 @@ def train():
             'roc_auc': roc_auc
         })
         
-        # Сохраняем модель
-        import os
+        # Сохраняем модель в joblib
         os.makedirs('./models', exist_ok=True)
         joblib.dump(best_model, MODEL_PATH)
-        print(f"Модель сохранена в {MODEL_PATH}")
+        print(f"Joblib модель сохранена в {MODEL_PATH}")
         
-        # Сохраняем метрики в файл (для deploy)
+        # Сохраняем метрики в файл
         with open(RESULTS_PATH, "w") as f:
             f.write(f"Accuracy: {accuracy:.4f}\n")
             f.write(f"Precision: {precision:.4f}\n")
@@ -132,16 +134,18 @@ def train():
             f.write(f"F1-score: {f1:.4f}\n")
             f.write(f"ROC-AUC: {roc_auc:.4f}\n")
         
-        # Сохраняем путь к модели для MLflow serve
-        with open("model_path.txt", "w") as f:
-            f.write(MODEL_PATH)
-
+        # Сохраняем модель в MLflow-формате
+        if os.path.exists(MLFLOW_MODEL_PATH):
+            shutil.rmtree(MLFLOW_MODEL_PATH)
+        
         mlflow.sklearn.save_model(
             sk_model=best_model,
-            path="./models/mlflow_model"
+            path=MLFLOW_MODEL_PATH,
+            input_example=X_train.iloc[:5],
+            signature=mlflow.models.infer_signature(X_train, best_model.predict(X_train))
         )
-        print("MLflow модель сохранена в ./models/mlflow_model")
-            
+        print(f"MLflow модель сохранена в {MLFLOW_MODEL_PATH}")
+        
         return {
             'accuracy': accuracy,
             'roc_auc': roc_auc,
