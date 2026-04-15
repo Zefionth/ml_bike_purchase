@@ -7,6 +7,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 import mlflow
+import mlflow.sklearn
 import joblib
 import warnings
 warnings.filterwarnings('ignore')
@@ -134,7 +135,13 @@ def train():
         # Сохраняем путь к модели для MLflow serve
         with open("model_path.txt", "w") as f:
             f.write(MODEL_PATH)
-        
+
+        mlflow.sklearn.save_model(
+            sk_model=best_model,
+            path="./models/mlflow_model"
+        )
+        print("MLflow модель сохранена в ./models/mlflow_model")
+            
         return {
             'accuracy': accuracy,
             'roc_auc': roc_auc,
